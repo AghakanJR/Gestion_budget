@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+import json
+import gspread
+from google.oauth2.service_account import Credentials
 
-# Configuration de la page (passée en mode "wide" pour avoir de la place pour les colonnes)
+# Configuration de la page
 st.set_page_config(page_title="Mon Budget", page_icon="💰", layout="wide")
 
 st.title("💰 Ma Gestion Budgétaire")
@@ -36,59 +39,36 @@ if cle_revenus not in st.session_state:
         {"Source de revenu": "Autre", "Montant (€)": 0.0}
     ])
 
-edited_revenus = st.data_editor(
-    st.session_state[cle_revenus],
-    num_rows="dynamic",
-    use_container_width=True,
-    hide_index=True,
-    key=f"editor_{cle_revenus}"
-)
-
+edited_revenus = st.data_editor(st.session_state[cle_revenus], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_revenus}")
 st.session_state[cle_revenus] = edited_revenus
 df_rev_clean = edited_revenus.dropna(subset=["Source de revenu", "Montant (€)"])
 total_revenus = df_rev_clean["Montant (€)"].sum()
 
 # ==========================================
-# 2. DÉPENSES (Nouvelle disposition en colonnes)
+# 2. DÉPENSES
 # ==========================================
 st.header("2. Mes Dépenses")
-st.write("Remplissez vos sous-catégories directement dans les tableaux correspondants :")
-
 categories_meres = ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]
-toutes_depenses = [] # Liste pour regrouper toutes les données à la fin
+toutes_depenses = []
 
-# On crée 3 colonnes pour afficher les tableaux côte à côte
 cols = st.columns(3)
-
 for index, categorie in enumerate(categories_meres):
     cle_depense_cat = f"depenses_{categorie}_{cle_periode}"
     
-    # Tableau par défaut pour chaque catégorie
     if cle_depense_cat not in st.session_state:
-        st.session_state[cle_depense_cat] = pd.DataFrame([
-            {"Sous-catégorie": "", "Montant (€)": 0.0}
-        ])
+        st.session_state[cle_depense_cat] = pd.DataFrame([{"Sous-catégorie": "", "Montant (€)": 0.0}])
     
-    # On place le tableau dans l'une des 3 colonnes
     with cols[index % 3]:
         st.subheader(f"📂 {categorie}")
-        edited_df = st.data_editor(
-            st.session_state[cle_depense_cat],
-            num_rows="dynamic",
-            use_container_width=True,
-            hide_index=True,
-            key=f"editor_{cle_depense_cat}"
-        )
+        edited_df = st.data_editor(st.session_state[cle_depense_cat], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_depense_cat}")
         st.session_state[cle_depense_cat] = edited_df
         
-        # On nettoie et on ajoute la catégorie mère pour le graphique final
         df_clean = edited_df.dropna(subset=["Sous-catégorie"]).copy()
-        df_clean = df_clean[df_clean["Sous-catégorie"].str.strip() != ""] # Enlever les lignes vides
+        df_clean = df_clean[df_clean["Sous-catégorie"].str.strip() != ""]
         if not df_clean.empty:
             df_clean["Grande Famille"] = categorie
             toutes_depenses.append(df_clean)
 
-# Fusionner toutes les dépenses pour les calculs et le graphique
 if toutes_depenses:
     df_toutes_depenses = pd.concat(toutes_depenses, ignore_index=True)
     total_depenses = df_toutes_depenses["Montant (€)"].sum()
@@ -105,12 +85,7 @@ col_graph, col_bilan = st.columns([1, 1])
 with col_graph:
     st.subheader("📊 Répartition")
     if total_depenses > 0:
-        fig = px.sunburst(
-            df_toutes_depenses, 
-            path=['Grande Famille', 'Sous-catégorie'], 
-            values='Montant (€)',
-            color='Grande Famille'
-        )
+        fig = px.sunburst(df_toutes_depenses, path=['Grande Famille', 'Sous-catégorie'], values='Montant (€)', color='Grande Famille')
         fig.update_traces(textinfo="label+percent entry")
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -119,11 +94,48 @@ with col_graph:
 with col_bilan:
     reste_a_vivre = total_revenus - total_depenses
     st.subheader("📈 Bilan du mois")
-    
     st.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
     st.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
     st.metric(label="Reste à vivre", value=f"{reste_a_vivre:.2f} €", delta=f"{reste_a_vivre:.2f} €", delta_color="normal" if reste_a_vivre >=0 else "inverse")
 
-    if reste_a_vivre > 0:
-        epargne = st.slider("Objectif d'épargne", 0.0, float(reste_a_vivre), float(reste_a_vivre * 0.2), 10.0, key=f"epargne_{cle_periode}")
-        st.success(f"🎯 Reste pour imprévus/plaisir : **{(reste_a_vivre - epargne):.2f} €**")
+# ==========================================
+# 4. SAUVEGARDE DANS GOOGLE SHEETS
+# ==========================================
+st.write("---")
+st.header("💾 Enregistrer mes données")
+st.write("Une fois votre mois complété, cliquez ci-dessous pour envoyer l'historique dans votre Google Sheet.")
+
+if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
+    try:
+        # 1. Authentification avec la clé secrète
+        creds_dict = json.loads(st.secrets["google_secret"])
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        # 2. Ouverture du Google Sheet (Assure-toi du nom exact !)
+        sheet = client.open("Base de données Budget")
+        
+        # 3. Préparation et envoi des Revenus
+        if not df_rev_clean.empty:
+            ws_revenus = sheet.worksheet("Revenus")
+            df_rev_save = df_rev_clean.copy()
+            df_rev_save["Mois"] = mois_selectionne
+            df_rev_save["Année"] = annee_selectionnee
+            # On réorganise les colonnes
+            df_rev_save = df_rev_save[["Mois", "Année", "Source de revenu", "Montant (€)"]]
+            ws_revenus.append_rows(df_rev_save.values.tolist())
+            
+        # 4. Préparation et envoi des Dépenses
+        if not df_toutes_depenses.empty:
+            ws_depenses = sheet.worksheet("Depenses")
+            df_dep_save = df_toutes_depenses.copy()
+            df_dep_save["Mois"] = mois_selectionne
+            df_dep_save["Année"] = annee_selectionnee
+            df_dep_save = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)"]]
+            ws_depenses.append_rows(df_dep_save.values.tolist())
+            
+        st.success("✅ Félicitations ! Vos données ont été ajoutées à votre fichier Google Sheets.")
+        
+    except Exception as e:
+        st.error(f"❌ Une erreur s'est produite lors de la connexion à Google : {e}")
