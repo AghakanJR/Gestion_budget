@@ -107,13 +107,11 @@ st.write("Une fois votre mois complété, cliquez ci-dessous pour envoyer l'hist
 
 if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
     try:
-        # 1. Authentification avec la clé secrète
+        # 1. Authentification (Méthode plus moderne et robuste)
         creds_dict = json.loads(st.secrets["google_secret"])
-        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        client = gspread.authorize(creds)
+        client = gspread.service_account_from_dict(creds_dict)
         
-        # 2. Ouverture du Google Sheet (Assure-toi du nom exact !)
+        # 2. Ouverture du Google Sheet (Pense à mettre le nom exact que tu as choisi !)
         sheet = client.open("Base de données Budget")
         
         # 3. Préparation et envoi des Revenus
@@ -122,9 +120,11 @@ if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
             df_rev_save = df_rev_clean.copy()
             df_rev_save["Mois"] = mois_selectionne
             df_rev_save["Année"] = annee_selectionnee
-            # On réorganise les colonnes
             df_rev_save = df_rev_save[["Mois", "Année", "Source de revenu", "Montant (€)"]]
-            ws_revenus.append_rows(df_rev_save.values.tolist())
+            
+            # CORRECTION : On convertit tout en texte pour éviter de faire paniquer Python
+            lignes_revenus = df_rev_save.astype(str).values.tolist()
+            ws_revenus.append_rows(lignes_revenus, value_input_option="USER_ENTERED")
             
         # 4. Préparation et envoi des Dépenses
         if not df_toutes_depenses.empty:
@@ -133,7 +133,10 @@ if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
             df_dep_save["Mois"] = mois_selectionne
             df_dep_save["Année"] = annee_selectionnee
             df_dep_save = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)"]]
-            ws_depenses.append_rows(df_dep_save.values.tolist())
+            
+            # CORRECTION : On convertit tout en texte et on laisse Google Sheets gérer les nombres
+            lignes_depenses = df_dep_save.astype(str).values.tolist()
+            ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED")
             
         st.success("✅ Félicitations ! Vos données ont été ajoutées à votre fichier Google Sheets.")
         
