@@ -3,55 +3,37 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# Configuration de la page
-st.set_page_config(page_title="Mon Budget", page_icon="💰", layout="centered")
+# Configuration de la page (passée en mode "wide" pour avoir de la place pour les colonnes)
+st.set_page_config(page_title="Mon Budget", page_icon="💰", layout="wide")
 
-st.title("💰 Ma Gestion Budgétaire Personnalisée")
-st.write("Sélectionnez la période, puis définissez vos revenus et dépenses.")
+st.title("💰 Ma Gestion Budgétaire")
 
 # ==========================================
-# NOUVEAU : SÉLECTION DE LA PÉRIODE
+# PÉRIODE
 # ==========================================
 st.header("📅 Sélection de la période")
-
-# Récupérer l'année et le mois actuels par défaut
 annee_actuelle = datetime.now().year
 mois_actuel_index = datetime.now().month - 1
-liste_mois = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", 
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-]
+liste_mois = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
 col_annee, col_mois = st.columns([1, 3])
-
 with col_annee:
     annee_selectionnee = st.number_input("Année", min_value=2020, max_value=2050, value=annee_actuelle, step=1)
-
 with col_mois:
-    # La fameuse "petite barre" pour switcher entre les mois
-    mois_selectionne = st.select_slider(
-        "Mois", 
-        options=liste_mois, 
-        value=liste_mois[mois_actuel_index]
-    )
+    mois_selectionne = st.select_slider("Mois", options=liste_mois, value=liste_mois[mois_actuel_index])
 
-# On crée une clé unique pour cette période (ex: "Mars_2026")
 cle_periode = f"{mois_selectionne}_{annee_selectionnee}"
 
-
 # ==========================================
-# 1. SECTION REVENUS
+# 1. REVENUS
 # ==========================================
 st.header("1. Mes Revenus")
-
-# Clé spécifique pour les revenus de CE mois
 cle_revenus = f"revenus_{cle_periode}"
 
-# Si ce mois n'a pas encore de données, on crée un tableau par défaut
 if cle_revenus not in st.session_state:
     st.session_state[cle_revenus] = pd.DataFrame([
         {"Source de revenu": "Salaire net", "Montant (€)": 2000.0},
-        {"Source de revenu": "Prime", "Montant (€)": 0.0}
+        {"Source de revenu": "Autre", "Montant (€)": 0.0}
     ])
 
 edited_revenus = st.data_editor(
@@ -59,94 +41,89 @@ edited_revenus = st.data_editor(
     num_rows="dynamic",
     use_container_width=True,
     hide_index=True,
-    column_config={
-        "Source de revenu": st.column_config.TextColumn("Source de revenu", required=True),
-        "Montant (€)": st.column_config.NumberColumn("Montant (€)", min_value=0.0, format="%.2f", required=True)
-    },
-    key=f"editor_{cle_revenus}" # Clé unique pour le composant éditeur
+    key=f"editor_{cle_revenus}"
 )
 
 st.session_state[cle_revenus] = edited_revenus
 df_rev_clean = edited_revenus.dropna(subset=["Source de revenu", "Montant (€)"])
 total_revenus = df_rev_clean["Montant (€)"].sum()
 
-
 # ==========================================
-# 2. SECTION DÉPENSES
+# 2. DÉPENSES (Nouvelle disposition en colonnes)
 # ==========================================
 st.header("2. Mes Dépenses")
+st.write("Remplissez vos sous-catégories directement dans les tableaux correspondants :")
 
-grandes_familles = [
-    "Logement", "Assurances", "Alimentation", 
-    "Transports", "Loisirs", "Santé", 
-    "Abonnements", "Autre"
-]
+categories_meres = ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]
+toutes_depenses = [] # Liste pour regrouper toutes les données à la fin
 
-# Clé spécifique pour les dépenses de CE mois
-cle_depenses = f"depenses_{cle_periode}"
+# On crée 3 colonnes pour afficher les tableaux côte à côte
+cols = st.columns(3)
 
-if cle_depenses not in st.session_state:
-    st.session_state[cle_depenses] = pd.DataFrame([
-        {"Grande Famille": "Logement", "Sous-catégorie": "Loyer", "Montant (€)": 800.0},
-        {"Grande Famille": "Alimentation", "Sous-catégorie": "Courses", "Montant (€)": 300.0}
-    ])
+for index, categorie in enumerate(categories_meres):
+    cle_depense_cat = f"depenses_{categorie}_{cle_periode}"
+    
+    # Tableau par défaut pour chaque catégorie
+    if cle_depense_cat not in st.session_state:
+        st.session_state[cle_depense_cat] = pd.DataFrame([
+            {"Sous-catégorie": "", "Montant (€)": 0.0}
+        ])
+    
+    # On place le tableau dans l'une des 3 colonnes
+    with cols[index % 3]:
+        st.subheader(f"📂 {categorie}")
+        edited_df = st.data_editor(
+            st.session_state[cle_depense_cat],
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True,
+            key=f"editor_{cle_depense_cat}"
+        )
+        st.session_state[cle_depense_cat] = edited_df
+        
+        # On nettoie et on ajoute la catégorie mère pour le graphique final
+        df_clean = edited_df.dropna(subset=["Sous-catégorie"]).copy()
+        df_clean = df_clean[df_clean["Sous-catégorie"].str.strip() != ""] # Enlever les lignes vides
+        if not df_clean.empty:
+            df_clean["Grande Famille"] = categorie
+            toutes_depenses.append(df_clean)
 
-edited_df = st.data_editor(
-    st.session_state[cle_depenses],
-    num_rows="dynamic",
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Grande Famille": st.column_config.SelectboxColumn("Grande Famille", options=grandes_familles, required=True),
-        "Sous-catégorie": st.column_config.TextColumn("Sous-catégorie", required=True),
-        "Montant (€)": st.column_config.NumberColumn("Montant (€)", min_value=0.0, format="%.2f", required=True)
-    },
-    key=f"editor_{cle_depenses}"
-)
-
-st.session_state[cle_depenses] = edited_df
-df_clean = edited_df.dropna(subset=["Grande Famille", "Montant (€)"])
-total_depenses = df_clean["Montant (€)"].sum()
-
+# Fusionner toutes les dépenses pour les calculs et le graphique
+if toutes_depenses:
+    df_toutes_depenses = pd.concat(toutes_depenses, ignore_index=True)
+    total_depenses = df_toutes_depenses["Montant (€)"].sum()
+else:
+    df_toutes_depenses = pd.DataFrame(columns=["Grande Famille", "Sous-catégorie", "Montant (€)"])
+    total_depenses = 0.0
 
 # ==========================================
 # 3. GRAPHIQUE ET BILAN
 # ==========================================
-st.subheader(f"📊 Répartition de mes dépenses - {mois_selectionne} {annee_selectionnee}")
-if total_depenses > 0:
-    fig = px.sunburst(
-        df_clean, 
-        path=['Grande Famille', 'Sous-catégorie'], 
-        values='Montant (€)',
-        color='Grande Famille',
-        color_discrete_sequence=px.colors.qualitative.Pastel
-    )
-    fig.update_traces(textinfo="label+percent entry")
-    st.plotly_chart(fig, use_container_width=True)
-
-reste_a_vivre = total_revenus - total_depenses
-
-st.header("3. Bilan et Épargne")
-col_bilan1, col_bilan2, col_bilan3 = st.columns(3)
-col_bilan1.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
-col_bilan2.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
-col_bilan3.metric(label="Reste à vivre", value=f"{reste_a_vivre:.2f} €", delta=f"{reste_a_vivre:.2f} €", delta_color="normal" if reste_a_vivre >=0 else "inverse")
-
-# ==========================================
-# 4. OBJECTIF D'ÉPARGNE
-# ==========================================
 st.write("---")
-if reste_a_vivre > 0:
-    epargne = st.slider(
-        "Combien souhaitez-vous épargner ce mois-ci ?", 
-        min_value=0.0, 
-        max_value=float(reste_a_vivre), 
-        value=float(reste_a_vivre * 0.2), 
-        step=10.0,
-        key=f"slider_{cle_periode}" # Le slider s'adapte aussi au mois
-    )
+col_graph, col_bilan = st.columns([1, 1])
+
+with col_graph:
+    st.subheader("📊 Répartition")
+    if total_depenses > 0:
+        fig = px.sunburst(
+            df_toutes_depenses, 
+            path=['Grande Famille', 'Sous-catégorie'], 
+            values='Montant (€)',
+            color='Grande Famille'
+        )
+        fig.update_traces(textinfo="label+percent entry")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Ajoutez des dépenses pour voir le graphique.")
+
+with col_bilan:
+    reste_a_vivre = total_revenus - total_depenses
+    st.subheader("📈 Bilan du mois")
     
-    argent_de_poche = reste_a_vivre - epargne
-    st.success(f"🎯 En épargnant **{epargne:.2f} €**, il vous restera **{argent_de_poche:.2f} €** pour les imprévus ou vous faire plaisir !")
-else:
-    st.error("⚠️ Attention, vos dépenses dépassent ou égalent vos revenus. Vous êtes à découvert ou à l'équilibre strict.")
+    st.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
+    st.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
+    st.metric(label="Reste à vivre", value=f"{reste_a_vivre:.2f} €", delta=f"{reste_a_vivre:.2f} €", delta_color="normal" if reste_a_vivre >=0 else "inverse")
+
+    if reste_a_vivre > 0:
+        epargne = st.slider("Objectif d'épargne", 0.0, float(reste_a_vivre), float(reste_a_vivre * 0.2), 10.0, key=f"epargne_{cle_periode}")
+        st.success(f"🎯 Reste pour imprévus/plaisir : **{(reste_a_vivre - epargne):.2f} €**")
