@@ -106,39 +106,29 @@ st.header("💾 Enregistrer mes données")
 st.write("Une fois votre mois complété, cliquez ci-dessous pour envoyer l'historique dans votre Google Sheet.")
 
 if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
-    try:
-        # 1. Authentification (Méthode plus moderne et robuste)
-        creds_dict = json.loads(st.secrets["google_secret"])
-        client = gspread.service_account_from_dict(creds_dict)
+    # 1. Authentification
+    creds_dict = json.loads(st.secrets["google_secret"])
+    client = gspread.service_account_from_dict(creds_dict)
+    
+    # 2. Ouverture du Google Sheet 
+    sheet = client.open("Base de données Budget") # Modifie si tu avais gardé le tiret
+    
+    # 3. Préparation et envoi des Revenus
+    if not df_rev_clean.empty:
+        ws_revenus = sheet.worksheet("Revenus")
+        df_rev_save = df_rev_clean.copy()
+        df_rev_save["Mois"] = mois_selectionne
+        df_rev_save["Année"] = annee_selectionnee
+        lignes_revenus = df_rev_save[["Mois", "Année", "Source de revenu", "Montant (€)"]].astype(str).values.tolist()
+        ws_revenus.append_rows(lignes_revenus, value_input_option="USER_ENTERED")
         
-        # 2. Ouverture du Google Sheet (Pense à mettre le nom exact que tu as choisi !)
-        sheet = client.open("Base de données Budget")
+    # 4. Préparation et envoi des Dépenses
+    if not df_toutes_depenses.empty:
+        ws_depenses = sheet.worksheet("Depenses")
+        df_dep_save = df_toutes_depenses.copy()
+        df_dep_save["Mois"] = mois_selectionne
+        df_dep_save["Année"] = annee_selectionnee
+        lignes_depenses = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)"]].astype(str).values.tolist()
+        ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED")
         
-        # 3. Préparation et envoi des Revenus
-        if not df_rev_clean.empty:
-            ws_revenus = sheet.worksheet("Revenus")
-            df_rev_save = df_rev_clean.copy()
-            df_rev_save["Mois"] = mois_selectionne
-            df_rev_save["Année"] = annee_selectionnee
-            df_rev_save = df_rev_save[["Mois", "Année", "Source de revenu", "Montant (€)"]]
-            
-            # CORRECTION : On convertit tout en texte pour éviter de faire paniquer Python
-            lignes_revenus = df_rev_save.astype(str).values.tolist()
-            ws_revenus.append_rows(lignes_revenus, value_input_option="USER_ENTERED")
-            
-        # 4. Préparation et envoi des Dépenses
-        if not df_toutes_depenses.empty:
-            ws_depenses = sheet.worksheet("Depenses")
-            df_dep_save = df_toutes_depenses.copy()
-            df_dep_save["Mois"] = mois_selectionne
-            df_dep_save["Année"] = annee_selectionnee
-            df_dep_save = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)"]]
-            
-            # CORRECTION : On convertit tout en texte et on laisse Google Sheets gérer les nombres
-            lignes_depenses = df_dep_save.astype(str).values.tolist()
-            ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED")
-            
-        st.success("✅ Félicitations ! Vos données ont été ajoutées à votre fichier Google Sheets.")
-        
-    except Exception as e:
-        st.error(f"❌ Une erreur s'est produite lors de la connexion à Google : {e}")
+    st.success("✅ Félicitations ! Vos données ont été ajoutées à votre fichier Google Sheets.")
