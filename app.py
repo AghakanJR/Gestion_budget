@@ -111,7 +111,7 @@ if st.button("🚀 Sauvegarder ce mois dans ma base de données"):
     client = gspread.service_account_from_dict(creds_dict)
     
     # 2. Ouverture du Google Sheet 
-    sheet = client.open("Base de données Budget") # Modifie si tu avais gardé le tiret
+    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=0#gid=0")
     
     # 3. Préparation et envoi des Revenus
     if not df_rev_clean.empty:
