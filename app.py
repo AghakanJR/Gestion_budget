@@ -66,7 +66,7 @@ if st.session_state["authentication_status"]:
     with col_mois:
         mois_selectionne = st.select_slider("Mois", options=liste_mois, value=liste_mois[mois_actuel_index])
 
-    cle_periode = f"{mois_selectionne}_{annee_selectionnee}"
+    cle_periode = f"{mois_selectionne}_{annee_selectionnee}_{id_utilisateur}"
 
     # --- REVENUS ---
     st.header("1. Mes Revenus")
