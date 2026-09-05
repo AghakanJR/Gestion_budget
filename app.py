@@ -143,7 +143,7 @@ if st.session_state["authentication_status"]:
             client = gspread.service_account_from_dict(creds_dict)
             
             # /!\ N'OUBLIE PAS DE METTRE TON VRAI LIEN GOOGLE SHEETS ICI /!\
-            sheet = client.open_by_url("TON_LIEN_COMPLET_ICI")
+            sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=481933918#gid=481933918")
             
             # --- Envoi des Revenus ---
             if not df_rev_clean.empty:
