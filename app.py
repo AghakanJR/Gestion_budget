@@ -12,22 +12,19 @@ st.set_page_config(page_title="Mon Budget", page_icon="💰", layout="wide")
 # ==========================================
 # 1. SYSTÈME DE CONNEXION (Phase 1)
 # ==========================================
-# On demande à Python de sécuriser (hasher) nos mots de passe
-mots_de_passe_en_clair = ["123456", "budget2026"]
-passwords_hashes = stauth.Hasher(mots_de_passe_en_clair).generate()
 
-# Notre petite base de données d'utilisateurs
+# Notre petite base de données d'utilisateurs (les mots de passe seront cachés automatiquement)
 credentials = {
     "usernames": {
         "admin": {
             "email": "admin@budget.com",
             "name": "Administrateur",
-            "password": passwords_hashes[0] 
+            "password": "123456" # Mot de passe en clair
         },
         "alice": {
             "email": "alice@budget.com",
             "name": "Alice",
-            "password": passwords_hashes[1]
+            "password": "budget2026" # Mot de passe en clair
         }
     }
 }
