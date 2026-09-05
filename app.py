@@ -129,7 +129,7 @@ if st.session_state["authentication_status"]:
         st.metric(label="Reste à vivre", value=f"{reste_a_vivre:.2f} €", delta=f"{reste_a_vivre:.2f} €", delta_color="normal" if reste_a_vivre >=0 else "inverse")
 
     # ==========================================
-    # 3. SAUVEGARDE DANS GOOGLE SHEETS
+    # 3. SAUVEGARDE DANS GOOGLE SHEETS (Anti-Doublons)
     # ==========================================
     st.write("---")
     st.header("💾 Enregistrer mes données")
@@ -140,33 +140,51 @@ if st.session_state["authentication_status"]:
             client = gspread.service_account_from_dict(creds_dict)
             
             # /!\ N'OUBLIE PAS DE METTRE TON VRAI LIEN GOOGLE SHEETS ICI /!\
-            sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=481933918#gid=481933918")
+            sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=0#gid=0")
             
+            # --- NOTRE NOUVELLE FONCTION DE MÉNAGE ---
+            def nettoyer_doublons(worksheet):
+                records = worksheet.get_all_records()
+                lignes_a_supprimer = []
+                
+                # On cherche les lignes qui correspondent au mois, année ET utilisateur
+                for i, row in enumerate(records):
+                    if str(row.get("Mois")) == str(mois_selectionne) and \
+                       str(row.get("Année")) == str(annee_selectionnee) and \
+                       str(row.get("Utilisateur")) == str(id_utilisateur):
+                        lignes_a_supprimer.append(i + 2) # +2 car Python compte à partir de 0 et il y a l'en-tête
+                
+                # On efface de bas en haut pour éviter de décaler les lignes
+                for index_ligne in reversed(lignes_a_supprimer):
+                    worksheet.delete_rows(index_ligne)
+
             # --- Envoi des Revenus ---
             if not df_rev_clean.empty:
                 ws_revenus = sheet.worksheet("Revenus")
+                nettoyer_doublons(ws_revenus) # 🧹 On efface les anciens
+                
                 df_rev_save = df_rev_clean.copy()
                 df_rev_save["Mois"] = mois_selectionne
                 df_rev_save["Année"] = annee_selectionnee
-                df_rev_save["Utilisateur"] = id_utilisateur # On ajoute l'identité !
+                df_rev_save["Utilisateur"] = id_utilisateur
                 
-                # Ordre des colonnes modifié pour mettre l'utilisateur à la fin
                 lignes_revenus = df_rev_save[["Mois", "Année", "Source de revenu", "Montant (€)", "Utilisateur"]].astype(str).values.tolist()
-                ws_revenus.append_rows(lignes_revenus, value_input_option="USER_ENTERED")
+                ws_revenus.append_rows(lignes_revenus, value_input_option="USER_ENTERED") # 📝 On écrit les nouveaux
                 
             # --- Envoi des Dépenses ---
             if not df_toutes_depenses.empty:
                 ws_depenses = sheet.worksheet("Depenses")
+                nettoyer_doublons(ws_depenses) # 🧹 On efface les anciens
+                
                 df_dep_save = df_toutes_depenses.copy()
                 df_dep_save["Mois"] = mois_selectionne
                 df_dep_save["Année"] = annee_selectionnee
-                df_dep_save["Utilisateur"] = id_utilisateur # On ajoute l'identité !
+                df_dep_save["Utilisateur"] = id_utilisateur
                 
-                # Ordre des colonnes modifié
                 lignes_depenses = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)", "Utilisateur"]].astype(str).values.tolist()
-                ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED")
+                ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED") # 📝 On écrit les nouveaux
                 
-            st.success(f"✅ Félicitations {nom_utilisateur} ! Vos données ont bien été sauvegardées.")
+            st.success(f"✅ Mise à jour réussie {nom_utilisateur} ! Votre budget a été enregistré sans doublon.")
             
         except Exception as e:
             st.error(f"❌ Une erreur s'est produite lors de la connexion à Google : {e}")
