@@ -75,7 +75,7 @@ if st.session_state["authentication_status"]:
         try:
             creds_dict = json.loads(st.secrets["google_secret"])
             client = gspread.service_account_from_dict(creds_dict)
-            sheet = client.open_by_url("TON_LIEN_COMPLET_ICI")
+            sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=1461270140#gid=1461270140")
             
             # --- Chargement des Revenus ---
             ws_revenus = sheet.worksheet("Revenus")
