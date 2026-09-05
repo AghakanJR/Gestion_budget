@@ -68,6 +68,43 @@ if st.session_state["authentication_status"]:
 
     cle_periode = f"{mois_selectionne}_{annee_selectionnee}_{id_utilisateur}"
 
+    # ==========================================
+    # 2.5 CHARGEMENT DES DONNÉES (Historique)
+    # ==========================================
+    if st.button("📥 Charger mes données pour ce mois"):
+        try:
+            creds_dict = json.loads(st.secrets["google_secret"])
+            client = gspread.service_account_from_dict(creds_dict)
+            sheet = client.open_by_url("TON_LIEN_COMPLET_ICI")
+            
+            # --- Chargement des Revenus ---
+            ws_revenus = sheet.worksheet("Revenus")
+            tous_revenus = ws_revenus.get_all_records()
+            mes_revenus = [r for r in tous_revenus if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+            
+            if mes_revenus:
+                df_mes_revenus = pd.DataFrame(mes_revenus)[["Source de revenu", "Montant (€)"]]
+                st.session_state[f"revenus_{cle_periode}"] = df_mes_revenus
+                
+            # --- Chargement des Dépenses ---
+            ws_depenses = sheet.worksheet("Depenses")
+            toutes_depenses = ws_depenses.get_all_records()
+            mes_depenses = [r for r in toutes_depenses if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+            
+            if mes_depenses:
+                df_mes_depenses = pd.DataFrame(mes_depenses)
+                # On répartit les dépenses dans les bonnes catégories
+                for categorie in ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]:
+                    depenses_cat = df_mes_depenses[df_mes_depenses["Grande Famille"] == categorie][["Sous-catégorie", "Montant (€)"]]
+                    if not depenses_cat.empty:
+                        st.session_state[f"depenses_{categorie}_{cle_periode}"] = depenses_cat
+
+            st.success("✅ Données chargées avec succès !")
+            st.rerun() # Rafraîchit la page pour afficher les tableaux remplis
+            
+        except Exception as e:
+            st.error(f"❌ Erreur lors du chargement : {e}")
+
     # --- REVENUS ---
     st.header("1. Mes Revenus")
     cle_revenus = f"revenus_{cle_periode}"
