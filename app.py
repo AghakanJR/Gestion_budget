@@ -184,8 +184,14 @@ if st.session_state["authentication_status"]:
             st.info("Ajoutez des dépenses pour voir le graphique.")
 
     with col_bilan:
-        reste_a_vivre = total_revenus - total_depenses
-        st.subheader("📈 Bilan du mois")
+        st.subheader("📈 Bilan & Épargne")
+        
+        # 1. Champ pour l'objectif d'épargne
+        objectif_epargne = st.number_input("🎯 Objectif d'épargne (€)", min_value=0.0, value=0.0, step=50.0)
+        
+        # 2. Les calculs
+        reste_a_vivre_brut = total_revenus - total_depenses
+        reste_reel = reste_a_vivre_brut - objectif_epargne
         
         col_m1, col_m2 = st.columns(2)
         with col_m1:
@@ -194,11 +200,24 @@ if st.session_state["authentication_status"]:
             st.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
             
         st.metric(
-            label="Reste à vivre", 
-            value=f"{reste_a_vivre:.2f} €", 
-            delta=f"{reste_a_vivre:.2f} €", 
-            delta_color="normal" if reste_a_vivre >= 0 else "inverse"
+            label="Reste à vivre (après épargne)", 
+            value=f"{reste_reel:.2f} €", 
+            delta=f"{reste_reel:.2f} €", 
+            delta_color="normal" if reste_reel >= 0 else "inverse"
         )
+        
+        # 3. La fameuse ZONE DE DANGER
+        st.write("---")
+        if total_revenus == 0:
+            st.info("Renseignez vos revenus pour voir l'analyse.")
+        elif reste_a_vivre_brut < 0:
+            st.error("🚨 ALERTE : Vos dépenses dépassent déjà vos revenus !")
+        elif objectif_epargne > reste_a_vivre_brut:
+            st.error(f"🚨 ZONE ROUGE : Vous essayez d'épargner plus que ce qu'il vous reste ({reste_a_vivre_brut:.2f} €). Risque de découvert !")
+        elif objectif_epargne > 0 and reste_reel < (total_revenus * 0.10): # S'il reste moins de 10% du salaire
+            st.warning("⚠️ ZONE ORANGE : Attention, il vous reste une très petite marge pour les imprévus du quotidien.")
+        else:
+            st.success("✅ Budget parfaitement équilibré. Bonne gestion !")
 
     # ==========================================
     # 3. SAUVEGARDE DANS GOOGLE SHEETS (Anti-Doublons)
