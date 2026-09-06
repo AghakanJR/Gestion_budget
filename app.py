@@ -152,21 +152,25 @@ if st.session_state["authentication_status"]:
     with col_graph:
         st.subheader("📊 Répartition de mes dépenses")
         if total_depenses > 0:
+            
+            # L'astuce : On ajoute un "Centre" artificiel à nos données
+            df_graph = df_toutes_depenses.copy()
+            df_graph["Total"] = "Total" 
+            
             fig = px.sunburst(
-                df_toutes_depenses, 
-                path=['Grande Famille', 'Sous-catégorie'], 
+                df_graph, 
+                path=['Total', 'Grande Famille', 'Sous-catégorie'], # On ajoute 'Total' au début
                 values='Montant (€)', 
                 color='Grande Famille',
                 color_discrete_sequence=px.colors.qualitative.Pastel 
             )
             
-            # NOUVEAU DESIGN AVEC ZOOM
             fig.update_traces(
                 textinfo="label+percent parent",
-                insidetextorientation='horizontal', # Plus lisible à l'horizontale
+                insidetextorientation='horizontal',
                 hovertemplate="<b>%{label}</b><br>💸 Montant : %{value} €<br>📊 Part : %{percentParent:.1%}<extra></extra>",
                 marker=dict(line=dict(color='white', width=1.5)),
-                maxdepth=1  # <-- C'EST ICI QUE LA MAGIE OPÈRE !
+                maxdepth=2  # On autorise 2 niveaux (Le centre + 1 anneau)
             )
             
             fig.update_layout(
@@ -183,24 +187,6 @@ if st.session_state["authentication_status"]:
         reste_a_vivre = total_revenus - total_depenses
         st.subheader("📈 Bilan du mois")
         
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            st.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
-        with col_m2:
-            st.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
-            
-        st.metric(
-            label="Reste à vivre", 
-            value=f"{reste_a_vivre:.2f} €", 
-            delta=f"{reste_a_vivre:.2f} €", 
-            delta_color="normal" if reste_a_vivre >= 0 else "inverse"
-        )
-
-    with col_bilan:
-        reste_a_vivre = total_revenus - total_depenses
-        st.subheader("📈 Bilan du mois")
-        
-        # On met les métriques dans de jolies colonnes pour un effet "Dashboard"
         col_m1, col_m2 = st.columns(2)
         with col_m1:
             st.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
