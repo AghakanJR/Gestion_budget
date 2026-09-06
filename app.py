@@ -152,7 +152,6 @@ if st.session_state["authentication_status"]:
     with col_graph:
         st.subheader("📊 Répartition de mes dépenses")
         if total_depenses > 0:
-            # 1. Couleurs modernes (Pastel)
             fig = px.sunburst(
                 df_toutes_depenses, 
                 path=['Grande Famille', 'Sous-catégorie'], 
@@ -161,15 +160,15 @@ if st.session_state["authentication_status"]:
                 color_discrete_sequence=px.colors.qualitative.Pastel 
             )
             
-            # 2. Design des parts et de la bulle d'info (Hover) au passage de la souris
+            # NOUVEAU DESIGN AVEC ZOOM
             fig.update_traces(
                 textinfo="label+percent parent",
-                insidetextorientation='radial',
+                insidetextorientation='horizontal', # Plus lisible à l'horizontale
                 hovertemplate="<b>%{label}</b><br>💸 Montant : %{value} €<br>📊 Part : %{percentParent:.1%}<extra></extra>",
-                marker=dict(line=dict(color='white', width=1.5)) # Bordures blanches design
+                marker=dict(line=dict(color='white', width=1.5)),
+                maxdepth=1  # <-- C'EST ICI QUE LA MAGIE OPÈRE !
             )
             
-            # 3. Fond transparent et marges réduites
             fig.update_layout(
                 margin=dict(t=20, l=10, r=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
@@ -179,6 +178,23 @@ if st.session_state["authentication_status"]:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Ajoutez des dépenses pour voir le graphique.")
+
+    with col_bilan:
+        reste_a_vivre = total_revenus - total_depenses
+        st.subheader("📈 Bilan du mois")
+        
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
+            st.metric(label="Total Revenus", value=f"{total_revenus:.2f} €")
+        with col_m2:
+            st.metric(label="Total Dépenses", value=f"{total_depenses:.2f} €")
+            
+        st.metric(
+            label="Reste à vivre", 
+            value=f"{reste_a_vivre:.2f} €", 
+            delta=f"{reste_a_vivre:.2f} €", 
+            delta_color="normal" if reste_a_vivre >= 0 else "inverse"
+        )
 
     with col_bilan:
         reste_a_vivre = total_revenus - total_depenses
