@@ -115,44 +115,44 @@ if st.session_state["authentication_status"]:
             st.error(f"❌ Erreur lors du chargement : {e}")
 
     # --- REVENUS ---
-    st.header("1. Mes Revenus")
-    cle_revenus = f"revenus_{cle_periode}"
-    if cle_revenus not in st.session_state:
-        st.session_state[cle_revenus] = pd.DataFrame([{"Source de revenu": "Salaire net", "Montant (€)": 2000.0}])
+    with st.expander("💵 1. Gérer mes Revenus", expanded=False):
+        cle_revenus = f"revenus_{cle_periode}"
+        if cle_revenus not in st.session_state:
+            st.session_state[cle_revenus] = pd.DataFrame([{"Source de revenu": "Salaire net", "Montant (€)": 2000.0}])
 
-    edited_revenus = st.data_editor(st.session_state[cle_revenus], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_revenus}")
-    st.session_state[cle_revenus] = edited_revenus
-    df_rev_clean = edited_revenus.dropna(subset=["Source de revenu", "Montant (€)"])
-    total_revenus = df_rev_clean["Montant (€)"].sum()
+        edited_revenus = st.data_editor(st.session_state[cle_revenus], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_revenus}")
+        st.session_state[cle_revenus] = edited_revenus
+        df_rev_clean = edited_revenus.dropna(subset=["Source de revenu", "Montant (€)"])
+        total_revenus = df_rev_clean["Montant (€)"].sum()
 
     # --- DÉPENSES ---
-    st.header("2. Mes Dépenses")
-    categories_meres = ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]
-    toutes_depenses = []
+    with st.expander("🛍️ 2. Gérer mes Dépenses", expanded=False):
+        categories_meres = ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]
+        toutes_depenses = []
 
-    cols = st.columns(3)
-    for index, categorie in enumerate(categories_meres):
-        cle_depense_cat = f"depenses_{categorie}_{cle_periode}"
-        if cle_depense_cat not in st.session_state:
-            st.session_state[cle_depense_cat] = pd.DataFrame([{"Sous-catégorie": "", "Montant (€)": 0.0}])
-        
-        with cols[index % 3]:
-            st.subheader(f"📂 {categorie}")
-            edited_df = st.data_editor(st.session_state[cle_depense_cat], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_depense_cat}")
-            st.session_state[cle_depense_cat] = edited_df
+        cols = st.columns(3)
+        for index, categorie in enumerate(categories_meres):
+            cle_depense_cat = f"depenses_{categorie}_{cle_periode}"
+            if cle_depense_cat not in st.session_state:
+                st.session_state[cle_depense_cat] = pd.DataFrame([{"Sous-catégorie": "", "Montant (€)": 0.0}])
             
-            df_clean = edited_df.dropna(subset=["Sous-catégorie"]).copy()
-            df_clean = df_clean[df_clean["Sous-catégorie"].str.strip() != ""]
-            if not df_clean.empty:
-                df_clean["Grande Famille"] = categorie
-                toutes_depenses.append(df_clean)
+            with cols[index % 3]:
+                st.subheader(f"📂 {categorie}")
+                edited_df = st.data_editor(st.session_state[cle_depense_cat], num_rows="dynamic", use_container_width=True, hide_index=True, key=f"editor_{cle_depense_cat}")
+                st.session_state[cle_depense_cat] = edited_df
+                
+                df_clean = edited_df.dropna(subset=["Sous-catégorie"]).copy()
+                df_clean = df_clean[df_clean["Sous-catégorie"].str.strip() != ""]
+                if not df_clean.empty:
+                    df_clean["Grande Famille"] = categorie
+                    toutes_depenses.append(df_clean)
 
-    if toutes_depenses:
-        df_toutes_depenses = pd.concat(toutes_depenses, ignore_index=True)
-        total_depenses = df_toutes_depenses["Montant (€)"].sum()
-    else:
-        df_toutes_depenses = pd.DataFrame(columns=["Grande Famille", "Sous-catégorie", "Montant (€)"])
-        total_depenses = 0.0
+        if toutes_depenses:
+            df_toutes_depenses = pd.concat(toutes_depenses, ignore_index=True)
+            total_depenses = df_toutes_depenses["Montant (€)"].sum()
+        else:
+            df_toutes_depenses = pd.DataFrame(columns=["Grande Famille", "Sous-catégorie", "Montant (€)"])
+            total_depenses = 0.0
 
     # --- GRAPHIQUE ET BILAN ---
     st.write("---")
