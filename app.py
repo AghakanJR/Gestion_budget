@@ -99,6 +99,15 @@ if st.session_state["authentication_status"]:
                     if not depenses_cat.empty:
                         st.session_state[f"depenses_{categorie}_{cle_periode}"] = depenses_cat
 
+            # --- Chargement de l'Épargne ---
+            ws_epargne = sheet.worksheet("Epargne")
+            toute_epargne = ws_epargne.get_all_records()
+            mon_epargne = [r for r in toute_epargne if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+            
+            if mon_epargne:
+                # On sauvegarde dans la mémoire courte pour que la case s'affiche avec le bon chiffre
+                st.session_state[f"epargne_{cle_periode}"] = float(mon_epargne[0].get("Objectif Epargne", 0.0))
+
             st.success("✅ Données chargées avec succès !")
             st.rerun() # Rafraîchit la page pour afficher les tableaux remplis
             
@@ -187,7 +196,9 @@ if st.session_state["authentication_status"]:
         st.subheader("📈 Bilan & Épargne")
         
         # 1. Champ pour l'objectif d'épargne
-        objectif_epargne = st.number_input("🎯 Objectif d'épargne (€)", min_value=0.0, value=0.0, step=50.0)
+        # 1. Champ pour l'objectif d'épargne
+        valeur_sauvegardee = st.session_state.get(f"epargne_{cle_periode}", 0.0)
+        objectif_epargne = st.number_input("🎯 Objectif d'épargne (€)", min_value=0.0, value=float(valeur_sauvegardee), step=50.0)
         
         # 2. Les calculs
         reste_a_vivre_brut = total_revenus - total_depenses
@@ -274,8 +285,15 @@ if st.session_state["authentication_status"]:
                 
                 lignes_depenses = df_dep_save[["Mois", "Année", "Grande Famille", "Sous-catégorie", "Montant (€)", "Utilisateur"]].astype(str).values.tolist()
                 ws_depenses.append_rows(lignes_depenses, value_input_option="USER_ENTERED") # 📝 On écrit les nouveaux
+
+            # --- Envoi de l'Épargne ---
+                ws_epargne = sheet.worksheet("Epargne")
+                nettoyer_doublons(ws_epargne) # 🧹 On efface l'ancien objectif
                 
-            st.success(f"✅ Mise à jour réussie {nom_utilisateur} ! Votre budget a été enregistré sans doublon.")
+                ligne_epargne = [[str(mois_selectionne), str(annee_selectionnee), str(id_utilisateur), str(objectif_epargne)]]
+                ws_epargne.append_rows(ligne_epargne, value_input_option="USER_ENTERED")
+                    
+                st.success(f"✅ Mise à jour réussie {nom_utilisateur} ! Votre budget a été enregistré sans doublon.")
             
         except Exception as e:
             st.error(f"❌ Une erreur s'est produite lors de la connexion à Google : {e}")
