@@ -109,13 +109,12 @@ if st.session_state["authentication_status"]:
             toute_epargne = ws_epargne.get_all_records()
             mon_epargne = [r for r in toute_epargne if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
 
-            st.warning(f"🔍 Contenu total de la base : {toute_epargne}")
             if mon_epargne:
                 # On sauvegarde dans la mémoire courte pour que la case s'affiche avec le bon chiffre
                 st.session_state[f"epargne_{cle_periode}"] = float(mon_epargne[0].get("Objectif Epargne", 0.0))
 
             st.success("✅ Données chargées avec succès !")
-            #st.rerun() # Rafraîchit la page pour afficher les tableaux remplis
+            st.rerun() # Rafraîchit la page pour afficher les tableaux remplis
             
         except Exception as e:
             st.error(f"❌ Erreur lors du chargement : {e}")
