@@ -269,19 +269,27 @@ if st.session_state["authentication_status"]:
             # On crée une étiquette propre "Mois Année" (ex: "Septembre 2026")
             df_hist["Période"] = df_hist["Mois"] + " " + df_hist["Année"].astype(str)
                 
-            # 3. Calcul de la variation en pourcentage d'un mois sur l'autre
-            df_hist["Variation (%)"] = df_hist["Objectif Epargne"].pct_change() * 100
-            # On remplace les cases vides (le 1er mois) par 0
+            # 3. Calcul du capital cumulé 
+            total_epargne_absolu = df_hist["Objectif Epargne"].sum()
+            df_hist["Capital Cumulé (€)"] = df_hist["Objectif Epargne"].cumsum()
+            
+            # Calcul de la croissance en pourcentage du capital
+            df_hist["Variation (%)"] = df_hist["Capital Cumulé (€)"].pct_change() * 100
             df_hist["Variation (%)"] = df_hist["Variation (%)"].fillna(0).round(1) 
-                
+            
             # 4. Création du graphique interactif
             fig_courbe = px.line(
                 df_hist, 
                 x="Période", 
-                y="Objectif Epargne", 
-                markers=True, # Ajoute les petits points sur la courbe
-                title="Mon capital cumulé au fil des mois",
-                 hover_data={"Variation (%)": True, "Mois_num": False} # Données au survol
+                y="Capital Cumulé (€)", 
+                markers=True, 
+                # Le titre est maintenant exactement comme tu l'as demandé !
+                title=f"Mon capital cumulé au fil des mois : {total_epargne_absolu:.0f} €",
+                hover_data={
+                    "Variation (%)": True, 
+                    "Mois_num": False,
+                    "Objectif Epargne": True 
+                } 
             )
                 
             # On donne un look "Néo-banque" à la courbe (trait plus épais, couleur fluo)
