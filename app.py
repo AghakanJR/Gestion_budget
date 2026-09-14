@@ -209,7 +209,7 @@ if st.session_state["authentication_status"]:
             min_value=0.0, 
             step=50.0,
             key=f"epargne_{cle_periode}"
-        ), step=50.0
+        )
         
         # 2. Les calculs
         reste_a_vivre_brut = total_revenus - total_depenses
