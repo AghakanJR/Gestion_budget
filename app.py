@@ -55,18 +55,21 @@ if st.session_state["authentication_status"]:
     st.title(f"💰 Ma Gestion Budgétaire ({nom_utilisateur})")
 
     # --- PÉRIODE ---
-    st.header("📅 Sélection de la période")
-    annee_actuelle = datetime.now().year
-    mois_actuel_index = datetime.now().month - 1
-    liste_mois = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
-
-    col_annee, col_mois = st.columns([1, 3])
+    st.subheader("📅 Sélection de la période")
+    
+    # On crée deux petites colonnes pour mettre l'année et le mois côte à côte
+    col_annee, col_mois = st.columns(2)
+    
     with col_annee:
-        annee_selectionnee = st.number_input("Année", min_value=2020, max_value=2050, value=annee_actuelle, step=1)
+        annee_selectionnee = st.selectbox("Année", options=[2024, 2025, 2026, 2027, 2028], index=2)
+        
     with col_mois:
-        mois_selectionne = st.select_slider("Mois", options=liste_mois, value=liste_mois[mois_actuel_index])
-
-    cle_periode = f"{mois_selectionne}_{annee_selectionnee}_{id_utilisateur}"
+        liste_mois = [
+            "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", 
+            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+        ]
+        # On crée un menu déroulant très propre
+        mois_selectionne = st.selectbox("Mois", options=liste_mois, index=8)"
 
     # ==========================================
     # 2.5 CHARGEMENT DES DONNÉES (Historique)
