@@ -108,6 +108,7 @@ if st.session_state["authentication_status"]:
                 # --- Chargement de l'Épargne ---
                 ws_epargne = sheet.worksheet("Epargne")
                 toute_epargne = ws_epargne.get_all_records()
+                st.session_state["historique_complet_epargne"] = toute_epargne
                 mon_epargne = [r for r in toute_epargne if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
 
                 if mon_epargne:
@@ -247,8 +248,8 @@ if st.session_state["authentication_status"]:
     st.markdown("---") # Une petite ligne de séparation visuelle
     st.subheader("📈 Évolution de mon Épargne")
     
-    if 'toute_epargne' in locals() and toute_epargne:            
-        # 1. On récupère tout l'historique de l'utilisateur
+    if "historique_complet_epargne" in st.session_state:
+        toute_epargne = st.session_state["historique_complet_epargne"]
         historique_epargne = [r for r in toute_epargne if str(r.get("Utilisateur")) == str(id_utilisateur)]
             
         if historique_epargne:
