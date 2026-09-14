@@ -201,9 +201,15 @@ if st.session_state["authentication_status"]:
         st.subheader("📈 Bilan & Épargne")
         
         # 1. Champ pour l'objectif d'épargne
-        # 1. Champ pour l'objectif d'épargne
-        valeur_sauvegardee = st.session_state.get(f"epargne_{cle_periode}", 0.0)
-        objectif_epargne = st.number_input("🎯 Objectif d'épargne (€)", min_value=0.0, value=float(valeur_sauvegardee), step=50.0)
+        if f"epargne_{cle_periode}" not in st.session_state:
+            st.session_state[f"epargne_{cle_periode}"] = 0.0
+            
+        objectif_epargne = st.number_input(
+            "🎯 Objectif d'épargne (€)", 
+            min_value=0.0, 
+            step=50.0,
+            key=f"epargne_{cle_periode}"
+        ), step=50.0)
         
         # 2. Les calculs
         reste_a_vivre_brut = total_revenus - total_depenses
