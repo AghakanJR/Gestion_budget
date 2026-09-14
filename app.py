@@ -71,6 +71,8 @@ if st.session_state["authentication_status"]:
         # On crée un menu déroulant très propre
         mois_selectionne = st.selectbox("Mois", options=liste_mois, index=8)
 
+    cle_periode = f"{mois_selectionne}_{annee_selectionnee}_{id_utilisateur}"
+
     # ==========================================
     # 2.5 CHARGEMENT DES DONNÉES (Historique)
     # ==========================================
