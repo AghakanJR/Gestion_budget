@@ -27,9 +27,9 @@ credentials = {
             "password": "budget2026" # Mot de passe en clair
         },
         "Nadim": {
-            "email":
-            "name": "Nadim"
-            "password": "budget2026"
+            "email": "nadim@budget.com",
+            "name": "Nadim",
+            "password": "budget2026",
         }
     }
 }
