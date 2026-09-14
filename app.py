@@ -213,6 +213,62 @@ if st.session_state["authentication_status"]:
             key=f"epargne_{cle_periode}"
         )
         
+        # --- GRAPHIQUE : ÉVOLUTION DE L'ÉPARGNE ---
+    st.markdown("---") # Une petite ligne de séparation visuelle
+    st.subheader("📈 Évolution de mon Épargne")
+
+    if 'toute_epargne' in locals() and toute_epargne:
+        # 1. On récupère tout l'historique de l'utilisateur
+        historique_epargne = [r for r in toute_epargne if str(r.get("Utilisateur")) == str(id_utilisateur)]
+        
+        if historique_epargne:
+            import pandas as pd
+            import plotly.express as px
+            
+            df_hist = pd.DataFrame(historique_epargne)
+            
+            # 2. On trie les données chronologiquement (pour éviter que "Août" s'affiche avant "Janvier")
+            ordre_mois = {
+                "Janvier": 1, "Février": 2, "Mars": 3, "Avril": 4, "Mai": 5, "Juin": 6, 
+                "Juillet": 7, "Août": 8, "Septembre": 9, "Octobre": 10, "Novembre": 11, "Décembre": 12
+            }
+            df_hist["Mois_num"] = df_hist["Mois"].map(ordre_mois)
+            df_hist = df_hist.sort_values(by=["Année", "Mois_num"])
+            
+            # On crée une étiquette propre "Mois Année" (ex: "Septembre 2026")
+            df_hist["Période"] = df_hist["Mois"] + " " + df_hist["Année"].astype(str)
+            
+            # 3. Calcul de la variation en pourcentage d'un mois sur l'autre
+            df_hist["Variation (%)"] = df_hist["Objectif Epargne"].pct_change() * 100
+            # On remplace les cases vides (le 1er mois) par 0
+            df_hist["Variation (%)"] = df_hist["Variation (%)"].fillna(0).round(1) 
+            
+            # 4. Création du graphique interactif
+            fig_courbe = px.line(
+                df_hist, 
+                x="Période", 
+                y="Objectif Epargne", 
+                markers=True, # Ajoute les petits points sur la courbe
+                title="Mon capital cumulé au fil des mois",
+                hover_data={"Variation (%)": True, "Mois_num": False} # Données au survol
+            )
+            
+            # On donne un look "Néo-banque" à la courbe (trait plus épais, couleur fluo)
+            fig_courbe.update_traces(
+                line=dict(width=4, color="#10B981"), # Un beau vert émeraude
+                marker=dict(size=10, symbol="circle")
+            )
+            fig_courbe.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                xaxis_title="",
+                yaxis_title="Montant épargné (€)"
+            )
+            
+            st.plotly_chart(fig_courbe, use_container_width=True)
+        else:
+            st.info("💡 Commencez à épargner pour voir votre courbe d'évolution !")
+
         # 2. Les calculs
         reste_a_vivre_brut = total_revenus - total_depenses
         reste_reel = reste_a_vivre_brut - objectif_epargne
