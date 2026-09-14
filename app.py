@@ -76,47 +76,49 @@ if st.session_state["authentication_status"]:
     # ==========================================
     # 2.5 CHARGEMENT DES DONNÉES (Historique)
     # ==========================================
-    if st.button("📥 Charger mes données pour ce mois"):
-        try:
-            creds_dict = json.loads(st.secrets["google_secret"])
-            client = gspread.service_account_from_dict(creds_dict)
-            sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=1461270140#gid=1461270140")
-            
-            # --- Chargement des Revenus ---
-            ws_revenus = sheet.worksheet("Revenus")
-            tous_revenus = ws_revenus.get_all_records()
-            mes_revenus = [r for r in tous_revenus if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
-            
-            if mes_revenus:
-                df_mes_revenus = pd.DataFrame(mes_revenus)[["Source de revenu", "Montant (€)"]]
-                st.session_state[f"revenus_{cle_periode}"] = df_mes_revenus
+    if st.session_state.get("derniere_periode_chargee") != cle_periode:
+        with st.spinner("🔄 Chargement automatique..."):
+            try:
+                creds_dict = json.loads(st.secrets["google_secret"])
+                client = gspread.service_account_from_dict(creds_dict)
+                sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/12Sx9pwAmphhQGIxMtFrBJZrPEhZFntEUnknTPKi2oyo/edit?hl=fr&pli=1&gid=1461270140#gid=1461270140")
                 
-            # --- Chargement des Dépenses ---
-            ws_depenses = sheet.worksheet("Depenses")
-            toutes_depenses = ws_depenses.get_all_records()
-            mes_depenses = [r for r in toutes_depenses if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+                # --- Chargement des Revenus ---
+                ws_revenus = sheet.worksheet("Revenus")
+                tous_revenus = ws_revenus.get_all_records()
+                mes_revenus = [r for r in tous_revenus if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+                
+                if mes_revenus:
+                    df_mes_revenus = pd.DataFrame(mes_revenus)[["Source de revenu", "Montant (€)"]]
+                    st.session_state[f"revenus_{cle_periode}"] = df_mes_revenus
+                    
+                # --- Chargement des Dépenses ---
+                ws_depenses = sheet.worksheet("Depenses")
+                toutes_depenses = ws_depenses.get_all_records()
+                mes_depenses = [r for r in toutes_depenses if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+                
+                if mes_depenses:
+                    df_mes_depenses = pd.DataFrame(mes_depenses)
+                    # On répartit les dépenses dans les bonnes catégories
+                    for categorie in ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]:
+                        depenses_cat = df_mes_depenses[df_mes_depenses["Grande Famille"] == categorie][["Sous-catégorie", "Montant (€)"]]
+                        if not depenses_cat.empty:
+                            st.session_state[f"depenses_{categorie}_{cle_periode}"] = depenses_cat
+
+                # --- Chargement de l'Épargne ---
+                ws_epargne = sheet.worksheet("Epargne")
+                toute_epargne = ws_epargne.get_all_records()
+                mon_epargne = [r for r in toute_epargne if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
+
+                if mon_epargne:
+                    # On sauvegarde dans la mémoire courte pour que la case s'affiche avec le bon chiffre
+                    st.session_state[f"epargne_{cle_periode}"] = float(mon_epargne[0].get("Objectif Epargne", 0.0))
+
+                # On mémorise que ce mois est chargé pour bloquer les rechargements infinis
+            st.session_state["derniere_periode_chargee"] = cle_periode
+            st.rerun() # Rafraîchit l'écran instantanément
             
-            if mes_depenses:
-                df_mes_depenses = pd.DataFrame(mes_depenses)
-                # On répartit les dépenses dans les bonnes catégories
-                for categorie in ["Logement", "Alimentation", "Transports", "Assurances", "Loisirs", "Autre"]:
-                    depenses_cat = df_mes_depenses[df_mes_depenses["Grande Famille"] == categorie][["Sous-catégorie", "Montant (€)"]]
-                    if not depenses_cat.empty:
-                        st.session_state[f"depenses_{categorie}_{cle_periode}"] = depenses_cat
-
-            # --- Chargement de l'Épargne ---
-            ws_epargne = sheet.worksheet("Epargne")
-            toute_epargne = ws_epargne.get_all_records()
-            mon_epargne = [r for r in toute_epargne if str(r.get("Mois")) == str(mois_selectionne) and str(r.get("Année")) == str(annee_selectionnee) and str(r.get("Utilisateur")) == str(id_utilisateur)]
-
-            if mon_epargne:
-                # On sauvegarde dans la mémoire courte pour que la case s'affiche avec le bon chiffre
-                st.session_state[f"epargne_{cle_periode}"] = float(mon_epargne[0].get("Objectif Epargne", 0.0))
-
-            st.success("✅ Données chargées avec succès !")
-            st.rerun() # Rafraîchit la page pour afficher les tableaux remplis
-            
-        except Exception as e:
+            except Exception as e:
             st.error(f"❌ Erreur lors du chargement : {e}")
 
     # --- REVENUS ---
