@@ -25,6 +25,11 @@ credentials = {
             "email": "alice@budget.com",
             "name": "Alice",
             "password": "budget2026" # Mot de passe en clair
+        },
+        "Nadim": {
+            "email":
+            "name": "Nadim"
+            "password": "budget2026"
         }
     }
 }
