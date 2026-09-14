@@ -118,8 +118,8 @@ if st.session_state["authentication_status"]:
                 st.session_state["derniere_periode_chargee"] = cle_periode
                 st.rerun() # Rafraîchit l'écran instantanément
             
-                except Exception as e:
-                st.error(f"❌ Erreur lors du chargement : {e}")
+            except Exception as e:
+            st.error(f"❌ Erreur lors du chargement : {e}")
 
     # --- REVENUS ---
     with st.expander("💵 1. Gérer mes Revenus", expanded=False):
